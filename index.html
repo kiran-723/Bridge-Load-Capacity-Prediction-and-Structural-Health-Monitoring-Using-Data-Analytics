@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="BridgeApp">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bridge Load Capacity Prediction</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.3/angular.min.js"></script>
+</head>
+<body ng-controller="DashboardController as vm">
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand-box">
+                <div class="brand-icon">🌉</div>
+                <div>
+                    <h2>BridgeSight</h2>
+                    <p>Load Capacity Monitoring</p>
+                </div>
+            </div>
+            <nav class="nav flex-column sidebar-nav">
+                <a class="nav-link active" href="#">Dashboard</a>
+                <a class="nav-link" href="#overview">Overview</a>
+                <a class="nav-link" href="#prediction">Prediction</a>
+                <a class="nav-link" href="#analytics">Analytics</a>
+                <a class="nav-link" href="#alerts">Alerts</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div><strong>Last update</strong></div>
+                <div>25 May 2025 · 11:45 AM</div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div>
+                    <span class="tag">Bridge Capacity Prediction</span>
+                    <h1>Smart Structural Monitoring</h1>
+                    <p>Predict load performance, compare live bridge metrics, and review capacity trends with a modern dashboard interface.</p>
+                </div>
+                <div class="status-panel">
+                    <div class="status-item"><span class="label">User</span>Admin</div>
+                    <div class="status-pill" ng-class="{'status-safe': vm.summary.safePercent >= 75, 'status-warning': vm.summary.safePercent < 75 && vm.summary.safePercent >= 50, 'status-critical': vm.summary.safePercent < 50}">
+                        {{vm.summary.safePercent}}% safe
+                    </div>
+                </div>
+            </header>
+
+            <section class="kpi-row">
+                <div class="kpi-card bg-glow">
+                    <div>Total Bridges</div>
+                    <div class="kpi-value">{{vm.summary.total}}</div>
+                    <div class="kpi-note">Monitored structures</div>
+                </div>
+                <div class="kpi-card bg-glow">
+                    <div>Safe Bridges</div>
+                    <div class="kpi-value">{{vm.summary.safe}}</div>
+                    <div class="kpi-note">Stable performance</div>
+                </div>
+                <div class="kpi-card bg-glow">
+                    <div>Critical Bridges</div>
+                    <div class="kpi-value">{{vm.summary.critical}}</div>
+                    <div class="kpi-note">Needs urgent attention</div>
+                </div>
+                <div class="kpi-card bg-glow">
+                    <div>Under Observation</div>
+                    <div class="kpi-value">{{vm.summary.observation}}</div>
+                    <div class="kpi-note">Monitoring required</div>
+                </div>
+            </section>
+
+            <section id="overview" class="overview-panel">
+                <div class="overview-card">
+                    <div class="card-header">
+                        <h2>Bridge Overview</h2>
+                        <span class="small-text">Data from bridge fleet and real-time capacity estimation</span>
+                    </div>
+                    <div class="overview-grid">
+                        <div class="overview-stat">
+                            <div class="stat-label">Average Capacity</div>
+                            <div class="stat-number">{{vm.summary.avgCapacity}}%</div>
+                        </div>
+                        <div class="overview-stat">
+                            <div class="stat-label">Average Load</div>
+                            <div class="stat-number">{{vm.summary.avgLoad | number:0}} kN</div>
+                        </div>
+                        <div class="overview-stat">
+                            <div class="stat-label">Top Capacity</div>
+                            <div class="stat-number">{{vm.summary.maxCapacity | number:0}} kN</div>
+                        </div>
+                    </div>
+                    <div class="bridge-summary">
+                        <div>
+                            <h3>{{vm.selectedBridge.BridgeID || 'Select a bridge'}}</h3>
+                            <p>{{vm.selectedBridge.Location || 'Choose a bridge row below to inspect details and run predictions.'}}</p>
+                        </div>
+                        <div class="summary-badges">
+                            <span class="badge" ng-class="vm.statusClass(vm.selectedBridge)">{{vm.selectedBridge.Status || 'N/A'}}</span>
+                        </div>
+                    </div>
+                    <div class="detail-grid">
+                        <div class="detail-item"><strong>Type</strong>{{vm.selectedBridge.Type || 'N/A'}}</div>
+                        <div class="detail-item"><strong>Year Built</strong>{{vm.selectedBridge.YearBuilt || 'N/A'}}</div>
+                        <div class="detail-item"><strong>Material</strong>{{vm.selectedBridge.Material || 'N/A'}}</div>
+                        <div class="detail-item"><strong>Span</strong>{{vm.selectedBridge.Span_m || 'N/A'}} m</div>
+                        <div class="detail-item"><strong>Width</strong>{{vm.selectedBridge.Width_m || 'N/A'}} m</div>
+                        <div class="detail-item"><strong>Design Load</strong>{{vm.selectedBridge.DesignCapacity_kN || 'N/A'}} kN</div>
+                    </div>
+                </div>
+
+                <div class="chart-panel">
+                    <div class="chart-header">
+                        <h2>Load Ratio Gauge</h2>
+                        <span class="small-text">Gauge shows current load as a percentage of design capacity.</span>
+                    </div>
+                    <div class="gauge-card">
+                        <canvas id="bridgeGauge" width="420" height="260"></canvas>
+                        <div class="gauge-label">Current load ratio</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="prediction" class="prediction-panel">
+                <div class="panel-card">
+                    <h3>Bridge Prediction Controls</h3>
+                    <div class="row input-row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Select Bridge</label>
+                            <select class="form-select" ng-model="vm.selectedBridge" ng-options="bridge as bridge.BridgeID + ' (' + bridge.Location + ')' for bridge in vm.bridges" ng-change="vm.onBridgeSelected()">
+                                <option value="">Choose a bridge</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Remaining Age (years)</label>
+                            <input type="number" class="form-control" ng-model="vm.inputAge">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Custom Load (kN)</label>
+                            <input type="number" class="form-control" ng-model="vm.inputLoad">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3 align-items-center">
+                        <button class="btn btn-primary" ng-click="vm.runPrediction()">Run Prediction</button>
+                        <div class="prediction-badge" ng-class="{'safe': vm.prediction.status === 'SAFE', 'warning': vm.prediction.status === 'UNDER OBSERVATION', 'critical': vm.prediction.status === 'CRITICAL'}">
+                            {{vm.prediction.status}}
+                        </div>
+                    </div>
+                    <div class="prediction-summary row mt-4">
+                        <div class="col-md-4 summary-box">
+                            <div>Predicted Capacity</div>
+                            <strong>{{vm.prediction.capacity | number:0}} kN</strong>
+                        </div>
+                        <div class="col-md-4 summary-box">
+                            <div>Load Used</div>
+                            <strong>{{vm.prediction.load | number:0}} kN</strong>
+                        </div>
+                        <div class="col-md-4 summary-box">
+                            <div>Capacity %</div>
+                            <strong>{{vm.prediction.percent | number:1}}%</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-card table-card" id="analytics">
+                    <div class="table-header">
+                        <h3>Bridge Records</h3>
+                        <span class="small-text">Click any row to view and update details.</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Bridge ID</th>
+                                    <th>Location</th>
+                                    <th>Age</th>
+                                    <th>Span (m)</th>
+                                    <th>Load (kN)</th>
+                                    <th>Design (kN)</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="bridge in vm.bridges" ng-click="vm.selectBridge(bridge)" ng-class="{'table-success': bridge.Status === 'SAFE', 'table-warning': bridge.Status === 'UNDER OBSERVATION', 'table-danger': bridge.Status === 'CRITICAL'}">
+                                    <td>{{bridge.BridgeID}}</td>
+                                    <td>{{bridge.Location}}</td>
+                                    <td>{{bridge.Age}}</td>
+                                    <td>{{bridge.Span_m}}</td>
+                                    <td>{{bridge.CurrentLoad_kN}}</td>
+                                    <td>{{bridge.DesignCapacity_kN}}</td>
+                                    <td>{{bridge.Status}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="alerts" class="alerts-panel">
+                <div class="alert-card">
+                    <div class="alert-header">
+                        <h3>Recent Alerts</h3>
+                    </div>
+                    <div class="alert-list">
+                        <div class="alert-item" ng-repeat="alert in vm.alerts">
+                            <div class="alert-title">{{alert.title}}</div>
+                            <div class="alert-text">{{alert.message}}</div>
+                            <div class="alert-time">{{alert.time}}</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/phics.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
